@@ -13,6 +13,9 @@ unsigned char num[10] = {0x3f, 0x06, 0x5b, 0x4f, 0x67, 0x6d, 0x7d, 0x07, 0x7f, 0
 unsigned char hr_disp = 0x00;
 unsigned char min_disp = 0x00;
 
+volatile int T_int_flag = 0;
+volatile int count_time = 0;
+
 unsigned char C1 = 0x00;
 unsigned char C2 = 0x00;
 unsigned char C3 = 0x00;
@@ -25,6 +28,7 @@ __sbit __at 0xA6 DIO;
 __sbit __at 0xA5 DCLK;
 
 /* functions */
+void sys_tim_init();
 void rtc_2_tm1367();
 void tm1367_byteWrite();
 
@@ -33,13 +37,49 @@ void main()
 {
   DIO = 1;
   DCLK = 1;
+  sys_tim_init();
   while (1)
   {
-    rtc_2_tm1367();
-    tm1367_byteWrite(); //Data를 1ms 마다 가져 올 수 있게 하는 것이 좋을 듯. Time interval은 실험적으로 조정.
-                        //1ms는 timer interrupt 사용. counter를 이용하여 1sec마다 : 조정.
-                        //Ext. interrupt와의 우선순위는 timer interrupt가 상위로.
+    if (T_int_flag)
+    {
+      rtc_2_tm1367();
+      if (count_time == 500) //0.5sec는 on, 0.5sec는 off.
+      {
+        //2digit의 msb를 set/reset
+        digit02 ^= 0x80; //XOR연산. MSB가 1이면 0으로, 0이면 1로 나머지는 0과 연산이므로 그대로 유지.
+        count_time = 0;
+      }
+      tm1367_byteWrite(); //Data를 1ms 마다 가져 올 수 있게 하는 것이 좋을 듯. Time interval은 실험적으로 조정.
+                          //1ms는 timer interrupt 사용. counter를 이용하여 1sec마다 : 조정.
+                          //이는 추후에 RTC와 연동하여 정확한 초 변화도 감지하여 그에 상응하게 변동하게끔 code 작성예정.
+                          //Ext. interrupt와의 우선순위는 timer interrupt가 상위로.
+    }
   }
+}
+
+void sys_tim_init()
+{
+  TMOD = 0x01; //GATE = 0, C/T = 0, Timer/counter mode 1
+  TF0 = 0;     // Timer/counter 0 interrupt flag clear
+  TL0 = 0xfc;
+  TH0 = 0x17; //Time const. to generate 1ms //0xffff-0xfc17 = 1000. //1MC = 1us.
+  IE = 0x82;  // IE -> interrupt enable reg. Timer interrupt enables & entire interrupt enable.
+  IP = 0x02;  // IP -> interrupt priority. Set timer interrupt 0 as the highest priority.
+              // Should have to consider which register(btw IE & IP) comes first.
+
+  TR0 = 1; // Timer interrupt 0 RUN.
+}
+
+void T_int() __interrupt(1) // void [user name]() interrupt [vector num.]
+{
+  T_int_flag = 1;
+
+  count_time++;
+
+  TL0 = 0xfc;
+  TH0 = 0x17; // Reset of these two register is necessary for periodic interrupt since it is mode 1.
+  EA = 1;     // Interrupt enables
+  return;
 }
 
 void rtc_2_tm1367()
@@ -50,15 +90,14 @@ void rtc_2_tm1367()
   //min_disp = byte_read(0x83);
   min_disp = 0x50; //this code is for test
 
-  /*num[]안에 const. value여야한다.*/
-  digit01 = num[(hr_disp>>4)];
-  digit02 = num[(hr_disp|0x0f)];
-  digit03 = num[(min_disp>>4)];
-  digit04 = num[(min_disp|0x0f)];
+  digit01 = num[(hr_disp >> 4)];
+  digit02 = num[(hr_disp | 0x0f)];
+  digit03 = num[(min_disp >> 4)];
+  digit04 = num[(min_disp | 0x0f)];
   return;
 }
 
-int tm1367_byteWrite()
+int tm1367_byteWrite() //Trial version이라서 정상 작동하는지 체크.
 {
   DIO = 0; //Writing SRAM Data initiate.
 
