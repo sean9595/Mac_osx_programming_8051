@@ -111,7 +111,7 @@ void main()
             }
             byte_write(0x80, 0x00); //Clock resume
             byte_write(0x8e, 0x80); //쓰기금지 enable
-            btn_int_flag != btn_int_flag;
+            btn_int_flag = !(btn_int_flag);
             count = 0;
         }
     }

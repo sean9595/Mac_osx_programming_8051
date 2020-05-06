@@ -601,6 +601,14 @@ _main:
 	mov	_byte_write_PARM_2,#0x80
 	mov	dpl,#0x8e
 	lcall	_byte_write
+;	main.c:114: btn_int_flag = !(btn_int_flag);
+	mov	a,_btn_int_flag
+	cjne	a,#0x01,00242$
+00242$:
+	clr	a
+	rlc	a
+	mov	r7,a
+	mov	_btn_int_flag,r7
 ;	main.c:115: count = 0;
 	clr	a
 	mov	_main_count_196609_10,a
