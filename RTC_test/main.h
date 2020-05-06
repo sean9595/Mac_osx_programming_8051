@@ -4,7 +4,7 @@
  * Author: Sean K.
  * Date: 04.22.20
  * Updated: 04.23.20
- */
+ */ 
 
 #ifndef __MAIN_H
 #define __MAIN_H
@@ -26,7 +26,7 @@ void date_set();
 void day_set();
 void hr_set();
 void min_set();
-
+ 
 
 #ifdef __cplusplus
 }
