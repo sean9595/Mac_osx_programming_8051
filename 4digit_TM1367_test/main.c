@@ -5,6 +5,7 @@
 // Date: 04.29.20
 // Edited:
 //
+
 #include "main.h"
 #include "at89x52.h"
 
@@ -14,7 +15,7 @@ unsigned char hr_disp = 0x00;
 unsigned char min_disp = 0x00;
 
 volatile int T_int_flag = 0;
-volatile int count_time = 0;
+volatile int count_time = 0; 
 
 unsigned char C1 = 0x00;
 unsigned char C2 = 0x00;
@@ -53,6 +54,7 @@ void main()
                           //1ms는 timer interrupt 사용. counter를 이용하여 1sec마다 : 조정.
                           //이는 추후에 RTC와 연동하여 정확한 초 변화도 감지하여 그에 상응하게 변동하게끔 code 작성예정.
                           //Ext. interrupt와의 우선순위는 timer interrupt가 상위로.
+    T_int_flag = !(T_int_flag); 
     }
   }
 }
@@ -97,7 +99,9 @@ void rtc_2_tm1367()
   return;
 }
 
-int tm1367_byteWrite() //Trial version이라서 정상 작동하는지 체크.
+/* ACK 체크 code에 문제가 있을 수 있다. */
+//Trial version이라서 정상 작동하는지 체크.
+int tm1367_byteWrite()
 {
   DIO = 0; //Writing SRAM Data initiate.
 
@@ -107,10 +111,12 @@ int tm1367_byteWrite() //Trial version이라서 정상 작동하는지 체크.
   C2 = 0xC0; //Base address
   C3 = 0x8f; //Display ON, Brightness 8 (1~8)
 
+  //1bit of data is sent when the DCLK signal is driven Low->High.
+
   /* C1 */
   for (i = 0; i < 8; i++)
   {
-    DCLK = 0;
+    DCLK = 0; 
     if (C1 & 0x01)
       DIO = 1;
     else
@@ -130,7 +136,7 @@ int tm1367_byteWrite() //Trial version이라서 정상 작동하는지 체크.
     DCLK = 1;
   }
 
-  for (i = 0; i < 10; i++)
+  for (i = 0; i < 10; i++) 
   {
   }
 
