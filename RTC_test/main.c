@@ -3,7 +3,7 @@
  * File name: main.c
  * Author: Sean K.
  * Date: 04.22.20
- * Updated: 04.28.20
+ * Updated: 05.12.20
  */
 
 #include "at89x52.h"
