@@ -49,10 +49,11 @@ void main()
             byte_write(0x8e, 0x00); //쓰기금지 disable
             byte_write(0x80, 0x80); //Clock halt
 
-            volatile int count = 5000;
+            volatile int count = 5000; //5000은 너무 빠름.
 
-            while (count != 0) //
+            while (count != 0) 
             {
+                delay(1); //대략 5초간 대기 할 수 있게 delay 추가. //1ms
                 count--;
                 if (btn_01)
                 {
