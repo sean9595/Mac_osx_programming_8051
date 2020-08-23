@@ -839,12 +839,12 @@ _display:
 	swap	a
 	anl	a,#0x01
 ;	main.c:211: P0 = 0x0e;
-;	main.c:212: P1 = num[a];
+;	main.c:212: P2 = num[a];
 	mov	_a,a
 	mov	_P0,#0x0e
 	add	a,#_num
 	mov	r1,a
-	mov	_P1,@r1
+	mov	_P2,@r1
 	ret
 00110$:
 ;	main.c:215: else if (count_01 == 1)
@@ -858,12 +858,12 @@ _display:
 	mov	_hr,a
 	anl	a,#0x0f
 ;	main.c:219: P0 = 0x0d;
-;	main.c:220: P1 = num[b];
+;	main.c:220: P2 = num[b];
 	mov	_b,a
 	mov	_P0,#0x0d
 	add	a,#_num
 	mov	r1,a
-	mov	_P1,@r1
+	mov	_P2,@r1
 	ret
 00107$:
 ;	main.c:223: else if (count_01 == 2)
@@ -881,12 +881,12 @@ _display:
 	mov	a,#0x07
 	anl	a,r7
 ;	main.c:227: P0 = 0x0b;
-;	main.c:228: P1 = num[c];
+;	main.c:228: P2 = num[c];
 	mov	_c,a
 	mov	_P0,#0x0b
 	add	a,#_num
 	mov	r1,a
-	mov	_P1,@r1
+	mov	_P2,@r1
 	ret
 00104$:
 ;	main.c:231: else if (count_01 == 3)
@@ -900,12 +900,12 @@ _display:
 	mov	_min,a
 	anl	a,#0x0f
 ;	main.c:235: P0 = 0x07;
-;	main.c:236: P1 = num[d];
+;	main.c:236: P2 = num[d];
 	mov	_d,a
 	mov	_P0,#0x07
 	add	a,#_num
 	mov	r1,a
-	mov	_P1,@r1
+	mov	_P2,@r1
 00111$:
 ;	main.c:239: return;
 ;	main.c:240: }

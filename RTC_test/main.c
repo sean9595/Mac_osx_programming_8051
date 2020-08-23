@@ -209,7 +209,7 @@ void display()
         hr = byte_read(0x85);
         a = ((hr >> 4) & 0x01);
         P0 = 0x0e;
-        P1 = num[a];
+        P2 = num[a];
     }
 
     else if (count_01 == 1)
@@ -217,7 +217,7 @@ void display()
         hr = byte_read(0x85);
         b = (hr & 0x0f);
         P0 = 0x0d;
-        P1 = num[b];
+        P2 = num[b];
     }
 
     else if (count_01 == 2)
@@ -225,7 +225,7 @@ void display()
         min = byte_read(0x83);
         c = ((min>>4) & 0x07);
         P0 = 0x0b;
-        P1 = num[c];
+        P2 = num[c];
     }
 
     else if (count_01 == 3)
@@ -233,7 +233,7 @@ void display()
         min = byte_read(0x83);
         d = (min & 0x0f);
         P0 = 0x07;
-        P1 = num[d];
+        P2 = num[d];
     }
 
     return;
