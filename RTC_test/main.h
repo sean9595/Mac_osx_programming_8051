@@ -20,12 +20,7 @@ void sys_init();
 void delay(unsigned int ms);
 void byte_write(unsigned char w_addr, unsigned char w_data);
 unsigned char byte_read(unsigned char r_addr);
-void year_set();
-void mnth_set();
-void date_set();
-void day_set();
-void hr_set();
-void min_set();
+void display();
  
 
 #ifdef __cplusplus

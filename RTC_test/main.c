@@ -2,8 +2,8 @@
  * Title: RTC_test
  * File name: main.c
  * Author: Sean K.
- * Date: 04.22.20
- * Updated: 05.12.20
+ * Date: 08.23.20
+ * Updated: 
  */
 
 #include "at89x52.h"
@@ -12,24 +12,16 @@
 __sbit __at 0x92 SCLK;
 __sbit __at 0x93 IO;
 __sbit __at 0x94 RST;
-__sbit __at 0xB3 btn_01;
-__sbit __at 0xB4 btn_02;
-__sbit __at 0xB5 btn_03;
 
 void sys_init();
 void delay(unsigned int ms);
 void byte_write(unsigned char w_addr, unsigned char w_data);
 unsigned char byte_read(unsigned char r_addr);
-void year_set();
-void mnth_set();
-void date_set();
-void day_set();
-void hr_set();
-void min_set();
+void display();
 
 /*variables*/
-unsigned char btn_int_flag = 0; //원래 Flag는 bit로 선언해야한다.
-volatile int count_01 = 0;
+unsigned char T_int_flag_01 = 0;
+unsigned char count_01 = 0;
 
 unsigned char year_bcd = 0x20; //0~99 range이므로 20은 따로 적어야한다.
 unsigned char mnth_bcd = 0x01;
@@ -38,104 +30,56 @@ unsigned char day_bcd = 0x01;
 unsigned char hr_bcd = 0x80; //Default setting is the 12hour set.
 unsigned char min_bcd = 0x00;
 
+unsigned char a = 0, b = 0, c = 0, d = 0;
+unsigned char num[] = {0x40, 0x79, 0x24, 0x30, 0x19, 0x12, 0x02, 0x78, 0x00, 0x10};
+//7-segment common cathod.
+//Use PNP TR for suppling proper amount of current.
+unsigned char hr = 0;
+unsigned char min = 0;
+
+/* main function */
 void main()
 {
     sys_init();
 
     while (1) //infinite loop
     {
-        if (btn_int_flag)
+        if (T_int_flag_01)
         {
-            byte_write(0x8e, 0x00); //쓰기금지 disable
-            byte_write(0x80, 0x80); //Clock halt
-
-            volatile int count = 5000; //5000은 너무 빠름.
-
-            while (count != 0) 
-            {
-                delay(1); //대략 5초간 대기 할 수 있게 delay 추가. //1ms
-                count--;
-                if (btn_01)
-                {
-                    count_01 = 6;
-                    while (count_01 == 0)
-                    {
-                        if (btn_01)
-                        {
-                            count_01--;
-                        }
-
-                        if (btn_02)
-                        {
-                            switch (count_01)
-                            {
-                            case 6:
-                                if (btn_02)
-                                {
-                                    year_set();
-                                }
-                                break;
-                            case 5:
-                                if (btn_02)
-                                {
-                                    mnth_set();
-                                }
-                                break;
-                            case 4:
-                                if (btn_02)
-                                {
-                                    date_set();
-                                }
-                                break;
-                            case 3:
-                                if (btn_02)
-                                {
-                                    day_set();
-                                }
-                                break;
-                            case 2:
-                                if (btn_02)
-                                {
-                                    hr_set();
-                                }
-                                break;
-                            case 1:
-                                if (btn_02)
-                                {
-                                    min_set();
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            byte_write(0x80, 0x00); //Clock resume
-            byte_write(0x8e, 0x80); //쓰기금지 enable
-            btn_int_flag = !(btn_int_flag);
-            count = 0;
+            display();
         }
     }
 }
+
 /*personal func.*/
 void sys_init() //여기에 기본 interrupt 설정과 application 초기화를 위한 함수가 배치됨.
 {
-    btn_01 = 0;
-    btn_02 = 0;
-    btn_03 = 0;
+
     RST = 0;
     IO = 0;
     SCLK = 0;
 
+    TMOD = 0x01; //GATE = 0, C/T = 0, Timer/counter mode 1, Use timer/counter 0 & 1.
+    TF0 = 0;     // Timer/counter 0 interrupt flag clear
+    TH0 = 0xec;
+    TL0 = 0x78; // TI0 occurs every 5 ms
+                // 1us/MC -> (0xffff-0xec78) = 5,000
+    IE = 0x82;  // 0b1000 0010 IE -> interrupt enable reg. Timer interrupt enables & entire interrupt enable.
+    IP = 0x02;  // IP -> interrupt priority. Set timer interrupt 0 as the highest priority.
+                // Should have to consider which register(btw IE & IP) comes first.
+                //This code is unnecessary, since the priority of TI0 is higher than the priority of TI1(by internal polling).
+    TR0 = 1;    // Timer interrupt 0 RUN.
+
     delay(1); //pause for 1ms.
 
-    /*external interrupt setting*/
-    TCON = 0x01;
-    EX0 = 1;
-    EA = 1;
-    PX0 = 1;
-
     /*application intialization*/
+    byte_write(0x82, min_bcd);
+    byte_write(0x84, hr_bcd);
+    byte_write(0x86, date_bcd);
+    byte_write(0x88, mnth_bcd);
+    byte_write(0x8a, day_bcd);
+    byte_write(0x8c, year_bcd);
+
     return;
 }
 
@@ -149,14 +93,20 @@ void delay(unsigned int ms)
     }
 }
 
-/*interrupt func.*/
-void btn_int() __interrupt(0) //external interrupt 0 ISR
-                              //SDCC에서는 interrupt 처리함수를 이렇게 처리
+/* Timer interrupt */
+void T_int_01() __interrupt 1 // void [user name]() interrupt [vector num.]
 {
-    EA = 0;
-    btn_int_flag = 1;
-    delay(1);
-    EA = 1; // Interrupt enables
+
+    T_int_flag_01 = 1;
+
+    count_01++;
+    if (count_01 > 3)
+    {
+        count_01 = 0; //count increment & count initialization have to be placed at the same place.
+    }
+    TH0 = 0xec;
+    TL0 = 0x78; // Reset of these two register is necessary for periodic interrupt since it is mode 1.
+    EA = 1;     // Interrupt enables
     return;
 }
 
@@ -251,147 +201,40 @@ unsigned char byte_read(unsigned char r_addr) //read data on RTC.
     return r_data;
 }
 
-void year_set()
+void display()
 {
-    year_bcd++;
-    if (year_bcd == 0x0a)
+    /* a,b->hour, c,d->minute */
+    if (count_01 == 0)
     {
-        year_bcd = 0x10;
-    }
-    else if (year_bcd == 0x1a)
-    {
-        year_bcd = 0x20;
-    }
-    else if (year_bcd == 0x2a)
-    {
-        year_bcd = 0x30;
-    }
-    else if (year_bcd == 0x3a)
-    {
-        year_bcd = 0x40;
-    }
-    else if (year_bcd == 0x4a)
-    {
-        year_bcd = 0x50;
-    }
-    else if (year_bcd == 0x5a)
-    {
-        year_bcd = 0x60;
-    }
-    else if (year_bcd == 0x6a)
-    {
-        year_bcd = 0x70;
-    }
-    else if (year_bcd == 0x7a)
-    {
-        year_bcd = 0x80;
-    }
-    else if (year_bcd == 0x8a)
-    {
-        year_bcd = 0x90;
-    }
-    else if (year_bcd == 0x9a)
-    {
-        year_bcd = 0x00;
-    }
-    byte_write(0x8c, year_bcd);
-}
-
-void mnth_set()
-{
-    mnth_bcd++;
-    if (mnth_bcd == 0x0a)
-    {
-        mnth_bcd = 0x10;
-    }
-    else if (mnth_bcd == 0x13)
-    {
-        mnth_bcd = 0x01;
-    }
-    byte_write(0x88, mnth_bcd);
-}
-
-void date_set() //자동으로 mnth마다 설정이 되나?
-{
-    date_bcd++;
-    if (date_bcd == 0x0a)
-    {
-        date_bcd = 0x10;
-    }
-    else if (date_bcd == 0x1a)
-    {
-        date_bcd = 0x20;
-    }
-    else if (date_bcd == 0x2a)
-    {
-        date_bcd = 0x30;
-    }
-    else if (date_bcd == 0x32)
-    {
-        date_bcd = 0x01;
+        hr = byte_read(0x85);
+        a = ((hr >> 4) & 0x01);
+        P0 = 0x0e;
+        P1 = num[a];
     }
 
-    byte_write(0x86, date_bcd);
-}
+    else if (count_01 == 1)
+    {
+        hr = byte_read(0x85);
+        b = (hr & 0x0f);
+        P0 = 0x0d;
+        P1 = num[b];
+    }
 
-void day_set()
-{
-    day_bcd++;
-    if (day_bcd == 0x08)
+    else if (count_01 == 2)
     {
-        day_bcd = 0x01;
+        min = byte_read(0x83);
+        c = ((min>>4) & 0x07);
+        P0 = 0x0b;
+        P1 = num[c];
     }
-    byte_write(0x8a, day_bcd);
-}
 
-void hr_set()
-{
-    hr_bcd++;
-    if (hr_bcd == 0x8a)
+    else if (count_01 == 3)
     {
-        hr_bcd = 0x80 | 0x10;
+        min = byte_read(0x83);
+        d = (min & 0x0f);
+        P0 = 0x07;
+        P1 = num[d];
     }
-    else if (hr_bcd == 0x93)
-    {
-        hr_bcd = (0x80 | 0x01) | 0x20;
-    } //AM->PM
-    else if (hr_bcd == 0xaa)
-    {
-        hr_bcd = 0xa0 | 0x10;
-    }
-    else if (hr_bcd == 0xb3)
-    {
-        hr_bcd = 0x80;
-    }
-    byte_write(0x84, hr_bcd);
-}
 
-void min_set()
-{
-    min_bcd++;
-    if (min_bcd == 0x0a)
-    {
-        min_bcd = 0x10;
-    }
-    else if (min_bcd == 0x1a)
-    {
-        min_bcd = 0x20;
-    }
-    else if (min_bcd == 0x2a)
-    {
-        min_bcd = 0x30;
-    }
-    else if (min_bcd == 0x3a)
-    {
-        min_bcd = 0x40;
-    }
-    else if (min_bcd == 0x4a)
-    {
-        min_bcd = 0x50;
-    }
-    else if (min_bcd == 0x5a)
-    {
-        min_bcd = 0x00;
-    }
-    byte_write(0x82, min_bcd);
+    return;
 }

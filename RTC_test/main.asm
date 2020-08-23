@@ -9,11 +9,8 @@
 ; Public variables in this module
 ;--------------------------------------------------------
 	.globl _byte_write_PARM_2
-	.globl _btn_int
+	.globl _T_int_01
 	.globl _main
-	.globl _btn_03
-	.globl _btn_02
-	.globl _btn_01
 	.globl _RST
 	.globl _IO
 	.globl _SCLK
@@ -140,6 +137,13 @@
 	.globl _DPL
 	.globl _SP
 	.globl _P0
+	.globl _min
+	.globl _hr
+	.globl _num
+	.globl _d
+	.globl _c
+	.globl _b
+	.globl _a
 	.globl _min_bcd
 	.globl _hr_bcd
 	.globl _day_bcd
@@ -147,17 +151,12 @@
 	.globl _mnth_bcd
 	.globl _year_bcd
 	.globl _count_01
-	.globl _btn_int_flag
+	.globl _T_int_flag_01
 	.globl _sys_init
 	.globl _delay
 	.globl _byte_write
 	.globl _byte_read
-	.globl _year_set
-	.globl _mnth_set
-	.globl _date_set
-	.globl _day_set
-	.globl _hr_set
-	.globl _min_set
+	.globl _display
 ;--------------------------------------------------------
 ; special function registers
 ;--------------------------------------------------------
@@ -294,36 +293,19 @@ _CY	=	0x00d7
 _SCLK	=	0x0092
 _IO	=	0x0093
 _RST	=	0x0094
-_btn_01	=	0x00b3
-_btn_02	=	0x00b4
-_btn_03	=	0x00b5
 ;--------------------------------------------------------
 ; overlayable register banks
 ;--------------------------------------------------------
 	.area REG_BANK_0	(REL,OVR,DATA)
 	.ds 8
 ;--------------------------------------------------------
-; overlayable bit register bank
-;--------------------------------------------------------
-	.area BIT_BANK	(REL,OVR,DATA)
-bits:
-	.ds 1
-	b0 = bits[0]
-	b1 = bits[1]
-	b2 = bits[2]
-	b3 = bits[3]
-	b4 = bits[4]
-	b5 = bits[5]
-	b6 = bits[6]
-	b7 = bits[7]
-;--------------------------------------------------------
 ; internal ram data
 ;--------------------------------------------------------
 	.area DSEG    (DATA)
-_btn_int_flag::
+_T_int_flag_01::
 	.ds 1
 _count_01::
-	.ds 2
+	.ds 1
 _year_bcd::
 	.ds 1
 _mnth_bcd::
@@ -336,8 +318,20 @@ _hr_bcd::
 	.ds 1
 _min_bcd::
 	.ds 1
-_main_count_196609_10:
-	.ds 2
+_a::
+	.ds 1
+_b::
+	.ds 1
+_c::
+	.ds 1
+_d::
+	.ds 1
+_num::
+	.ds 10
+_hr::
+	.ds 1
+_min::
+	.ds 1
 ;--------------------------------------------------------
 ; overlayable items in internal ram 
 ;--------------------------------------------------------
@@ -398,7 +392,9 @@ __start__stack:
 	.area HOME    (CODE)
 __interrupt_vect:
 	ljmp	__sdcc_gsinit_startup
-	ljmp	_btn_int
+	reti
+	.ds	7
+	ljmp	_T_int_01
 ;--------------------------------------------------------
 ; global & static initialisations
 ;--------------------------------------------------------
@@ -412,25 +408,45 @@ __interrupt_vect:
 	.globl __mcs51_genXINIT
 	.globl __mcs51_genXRAMCLEAR
 	.globl __mcs51_genRAMCLEAR
-;	main.c:31: unsigned char btn_int_flag = 0; //원래 Flag는 bit로 선언해야한다.
-	mov	_btn_int_flag,#0x00
-;	main.c:32: volatile int count_01 = 0;
-	clr	a
-	mov	_count_01,a
-	mov	(_count_01 + 1),a
-;	main.c:34: unsigned char year_bcd = 0x20; //0~99 range이므로 20은 따로 적어야한다.
+;	main.c:23: unsigned char T_int_flag_01 = 0;
+	mov	_T_int_flag_01,#0x00
+;	main.c:24: unsigned char count_01 = 0;
+	mov	_count_01,#0x00
+;	main.c:26: unsigned char year_bcd = 0x20; //0~99 range이므로 20은 따로 적어야한다.
 	mov	_year_bcd,#0x20
-;	main.c:35: unsigned char mnth_bcd = 0x01;
+;	main.c:27: unsigned char mnth_bcd = 0x01;
 	mov	_mnth_bcd,#0x01
-;	main.c:36: unsigned char date_bcd = 0x01;
+;	main.c:28: unsigned char date_bcd = 0x01;
 	mov	_date_bcd,#0x01
-;	main.c:37: unsigned char day_bcd = 0x01;
+;	main.c:29: unsigned char day_bcd = 0x01;
 	mov	_day_bcd,#0x01
-;	main.c:38: unsigned char hr_bcd = 0x80; //Default setting is the 12hour set.
+;	main.c:30: unsigned char hr_bcd = 0x80; //Default setting is the 12hour set.
 	mov	_hr_bcd,#0x80
-;	main.c:39: unsigned char min_bcd = 0x00;
-;	1-genFromRTrack replaced	mov	_min_bcd,#0x00
-	mov	_min_bcd,a
+;	main.c:31: unsigned char min_bcd = 0x00;
+	mov	_min_bcd,#0x00
+;	main.c:33: unsigned char a = 0, b = 0, c = 0, d = 0;
+	mov	_a,#0x00
+;	main.c:33: unsigned char num[] = {0x40, 0x79, 0x24, 0x30, 0x19, 0x12, 0x02, 0x78, 0x00, 0x10};
+	mov	_b,#0x00
+;	main.c:33: unsigned char a = 0, b = 0, c = 0, d = 0;
+	mov	_c,#0x00
+;	main.c:33: unsigned char num[] = {0x40, 0x79, 0x24, 0x30, 0x19, 0x12, 0x02, 0x78, 0x00, 0x10};
+	mov	_d,#0x00
+;	main.c:34: //7-segment common cathod.
+	mov	_num,#0x40
+	mov	(_num + 0x0001),#0x79
+	mov	(_num + 0x0002),#0x24
+	mov	(_num + 0x0003),#0x30
+	mov	(_num + 0x0004),#0x19
+	mov	(_num + 0x0005),#0x12
+	mov	(_num + 0x0006),#0x02
+	mov	(_num + 0x0007),#0x78
+	mov	(_num + 0x0008),#0x00
+	mov	(_num + 0x0009),#0x10
+;	main.c:37: unsigned char hr = 0;
+	mov	_hr,#0x00
+;	main.c:38: unsigned char min = 0;
+	mov	_min,#0x00
 	.area GSFINAL (CODE)
 	ljmp	__sdcc_program_startup
 ;--------------------------------------------------------
@@ -448,8 +464,6 @@ __sdcc_program_startup:
 ;------------------------------------------------------------
 ;Allocation info for local variables in function 'main'
 ;------------------------------------------------------------
-;count                     Allocated with name '_main_count_196609_10'
-;------------------------------------------------------------
 ;	main.c:41: void main()
 ;	-----------------------------------------
 ;	 function main
@@ -466,201 +480,76 @@ _main:
 ;	main.c:43: sys_init();
 	lcall	_sys_init
 ;	main.c:45: while (1) //infinite loop
-00135$:
-;	main.c:47: if (btn_int_flag)
-	mov	a,_btn_int_flag
-	jz	00135$
-;	main.c:49: byte_write(0x8e, 0x00); //쓰기금지 disable
-	mov	_byte_write_PARM_2,#0x00
-	mov	dpl,#0x8e
-	lcall	_byte_write
-;	main.c:50: byte_write(0x80, 0x80); //Clock halt
-	mov	_byte_write_PARM_2,#0x80
-	mov	dpl,#0x80
-	lcall	_byte_write
-;	main.c:52: volatile int count = 5000; //5000은 너무 빠름.
-	mov	_main_count_196609_10,#0x88
-	mov	(_main_count_196609_10 + 1),#0x13
-;	main.c:54: while (count != 0) 
-00129$:
-	mov	a,_main_count_196609_10
-	orl	a,(_main_count_196609_10 + 1)
-	jnz	00224$
-	ljmp	00131$
-00224$:
-;	main.c:56: delay(1); //대략 5초간 대기 할 수 있게 delay 추가. //1ms
-	mov	dptr,#0x0001
-	lcall	_delay
-;	main.c:57: count--;
-	mov	r6,_main_count_196609_10
-	mov	r7,(_main_count_196609_10 + 1)
-	mov	a,r6
-	add	a,#0xff
-	mov	_main_count_196609_10,a
-	mov	a,r7
-	addc	a,#0xff
-	mov	(_main_count_196609_10 + 1),a
-;	main.c:58: if (btn_01)
-	jnb	_btn_01,00129$
-;	main.c:60: count_01 = 6;
-	mov	_count_01,#0x06
-	mov	(_count_01 + 1),#0x00
-;	main.c:61: while (count_01 == 0)
-00124$:
-	mov	a,_count_01
-	orl	a,(_count_01 + 1)
-	jnz	00129$
-;	main.c:63: if (btn_01)
-	jnb	_btn_01,00102$
-;	main.c:65: count_01--;
-	mov	r6,_count_01
-	mov	r7,(_count_01 + 1)
-	mov	a,r6
-	add	a,#0xff
-	mov	_count_01,a
-	mov	a,r7
-	addc	a,#0xff
-	mov	(_count_01 + 1),a
-00102$:
-;	main.c:68: if (btn_02)
-	jnb	_btn_02,00124$
-;	main.c:70: switch (count_01)
-	mov	r6,_count_01
-	mov	r7,(_count_01 + 1)
-	cjne	r6,#0x01,00229$
-	cjne	r7,#0x00,00229$
-	sjmp	00118$
-00229$:
-	cjne	r6,#0x02,00230$
-	cjne	r7,#0x00,00230$
-	sjmp	00115$
-00230$:
-	cjne	r6,#0x03,00231$
-	cjne	r7,#0x00,00231$
-	sjmp	00112$
-00231$:
-	cjne	r6,#0x04,00232$
-	cjne	r7,#0x00,00232$
-	sjmp	00109$
-00232$:
-	cjne	r6,#0x05,00233$
-	cjne	r7,#0x00,00233$
-	sjmp	00106$
-00233$:
-	cjne	r6,#0x06,00124$
-	cjne	r7,#0x00,00124$
-;	main.c:73: if (btn_02)
-	jnb	_btn_02,00124$
-;	main.c:75: year_set();
-	lcall	_year_set
-;	main.c:77: break;
-;	main.c:78: case 5:
-	sjmp	00124$
-00106$:
-;	main.c:79: if (btn_02)
-	jnb	_btn_02,00124$
-;	main.c:81: mnth_set();
-	lcall	_mnth_set
-;	main.c:83: break;
-;	main.c:84: case 4:
-	sjmp	00124$
-00109$:
-;	main.c:85: if (btn_02)
-	jnb	_btn_02,00124$
-;	main.c:87: date_set();
-	lcall	_date_set
-;	main.c:89: break;
-;	main.c:90: case 3:
-	sjmp	00124$
-00112$:
-;	main.c:91: if (btn_02)
-	jnb	_btn_02,00124$
-;	main.c:93: day_set();
-	lcall	_day_set
-;	main.c:95: break;
-;	main.c:96: case 2:
-	sjmp	00124$
-00115$:
-;	main.c:97: if (btn_02)
-	jnb	_btn_02,00124$
-;	main.c:99: hr_set();
-	lcall	_hr_set
-;	main.c:101: break;
-;	main.c:102: case 1:
-	sjmp	00124$
-00118$:
-;	main.c:103: if (btn_02)
-	jnb	_btn_02,00124$
-;	main.c:105: min_set();
-	lcall	_min_set
-;	main.c:108: }
-	ljmp	00124$
-00131$:
-;	main.c:113: byte_write(0x80, 0x00); //Clock resume
-	mov	_byte_write_PARM_2,#0x00
-	mov	dpl,#0x80
-	lcall	_byte_write
-;	main.c:114: byte_write(0x8e, 0x80); //쓰기금지 enable
-	mov	_byte_write_PARM_2,#0x80
-	mov	dpl,#0x8e
-	lcall	_byte_write
-;	main.c:115: btn_int_flag = !(btn_int_flag);
-	mov	a,_btn_int_flag
-	cjne	a,#0x01,00242$
-00242$:
-	clr	a
-	rlc	a
-	mov	r7,a
-	mov	_btn_int_flag,r7
-;	main.c:116: count = 0;
-	clr	a
-	mov	_main_count_196609_10,a
-	mov	(_main_count_196609_10 + 1),a
-;	main.c:119: }
-	ljmp	00135$
+00104$:
+;	main.c:47: if (T_int_flag_01)
+	mov	a,_T_int_flag_01
+	jz	00104$
+;	main.c:49: display();
+	lcall	_display
+;	main.c:52: }
+	sjmp	00104$
 ;------------------------------------------------------------
 ;Allocation info for local variables in function 'sys_init'
 ;------------------------------------------------------------
-;	main.c:121: void sys_init() //여기에 기본 interrupt 설정과 application 초기화를 위한 함수가 배치됨.
+;	main.c:55: void sys_init() //여기에 기본 interrupt 설정과 application 초기화를 위한 함수가 배치됨.
 ;	-----------------------------------------
 ;	 function sys_init
 ;	-----------------------------------------
 _sys_init:
-;	main.c:123: btn_01 = 0;
-;	assignBit
-	clr	_btn_01
-;	main.c:124: btn_02 = 0;
-;	assignBit
-	clr	_btn_02
-;	main.c:125: btn_03 = 0;
-;	assignBit
-	clr	_btn_03
-;	main.c:126: RST = 0;
+;	main.c:58: RST = 0;
 ;	assignBit
 	clr	_RST
-;	main.c:127: IO = 0;
+;	main.c:59: IO = 0;
 ;	assignBit
 	clr	_IO
-;	main.c:128: SCLK = 0;
+;	main.c:60: SCLK = 0;
 ;	assignBit
 	clr	_SCLK
-;	main.c:130: delay(1); //pause for 1ms.
+;	main.c:62: TMOD = 0x01; //GATE = 0, C/T = 0, Timer/counter mode 1, Use timer/counter 0 & 1.
+	mov	_TMOD,#0x01
+;	main.c:63: TF0 = 0;     // Timer/counter 0 interrupt flag clear
+;	assignBit
+	clr	_TF0
+;	main.c:64: TH0 = 0xec;
+	mov	_TH0,#0xec
+;	main.c:65: TL0 = 0x78; // TI0 occurs every 5 ms
+	mov	_TL0,#0x78
+;	main.c:67: IE = 0x82;  // 0b1000 0010 IE -> interrupt enable reg. Timer interrupt enables & entire interrupt enable.
+	mov	_IE,#0x82
+;	main.c:68: IP = 0x02;  // IP -> interrupt priority. Set timer interrupt 0 as the highest priority.
+	mov	_IP,#0x02
+;	main.c:71: TR0 = 1;    // Timer interrupt 0 RUN.
+;	assignBit
+	setb	_TR0
+;	main.c:73: delay(1); //pause for 1ms.
 	mov	dptr,#0x0001
 	lcall	_delay
-;	main.c:133: TCON = 0x01;
-	mov	_TCON,#0x01
-;	main.c:134: EX0 = 1;
-;	assignBit
-	setb	_EX0
-;	main.c:135: EA = 1;
-;	assignBit
-	setb	_EA
-;	main.c:136: PX0 = 1;
-;	assignBit
-	setb	_PX0
-;	main.c:139: return;
-;	main.c:140: }
-	ret
+;	main.c:76: byte_write(0x82, min_bcd);
+	mov	_byte_write_PARM_2,_min_bcd
+	mov	dpl,#0x82
+	lcall	_byte_write
+;	main.c:77: byte_write(0x84, hr_bcd);
+	mov	_byte_write_PARM_2,_hr_bcd
+	mov	dpl,#0x84
+	lcall	_byte_write
+;	main.c:78: byte_write(0x86, date_bcd);
+	mov	_byte_write_PARM_2,_date_bcd
+	mov	dpl,#0x86
+	lcall	_byte_write
+;	main.c:79: byte_write(0x88, mnth_bcd);
+	mov	_byte_write_PARM_2,_mnth_bcd
+	mov	dpl,#0x88
+	lcall	_byte_write
+;	main.c:80: byte_write(0x8a, day_bcd);
+	mov	_byte_write_PARM_2,_day_bcd
+	mov	dpl,#0x8a
+	lcall	_byte_write
+;	main.c:81: byte_write(0x8c, year_bcd);
+	mov	_byte_write_PARM_2,_year_bcd
+	mov	dpl,#0x8c
+;	main.c:83: return;
+;	main.c:84: }
+	ljmp	_byte_write
 ;------------------------------------------------------------
 ;Allocation info for local variables in function 'delay'
 ;------------------------------------------------------------
@@ -668,14 +557,14 @@ _sys_init:
 ;i                         Allocated to registers r4 r5 
 ;j                         Allocated to registers r2 r3 
 ;------------------------------------------------------------
-;	main.c:142: void delay(unsigned int ms)
+;	main.c:86: void delay(unsigned int ms)
 ;	-----------------------------------------
 ;	 function delay
 ;	-----------------------------------------
 _delay:
 	mov	r6,dpl
 	mov	r7,dph
-;	main.c:145: for (i = 1; i <= ms; i++)
+;	main.c:89: for (i = 1; i <= ms; i++)
 	mov	r4,#0x01
 	mov	r5,#0x00
 00107$:
@@ -685,7 +574,7 @@ _delay:
 	mov	a,r7
 	subb	a,r5
 	jc	00109$
-;	main.c:147: for (j = 1; j <= 125; j++)
+;	main.c:91: for (j = 1; j <= 125; j++)
 	mov	r2,#0x7d
 	mov	r3,#0x00
 00105$:
@@ -700,65 +589,51 @@ _delay:
 	mov	a,r0
 	orl	a,r1
 	jnz	00105$
-;	main.c:145: for (i = 1; i <= ms; i++)
+;	main.c:89: for (i = 1; i <= ms; i++)
 	inc	r4
 	cjne	r4,#0x00,00107$
 	inc	r5
 	sjmp	00107$
 00109$:
-;	main.c:150: }
+;	main.c:94: }
 	ret
 ;------------------------------------------------------------
-;Allocation info for local variables in function 'btn_int'
+;Allocation info for local variables in function 'T_int_01'
 ;------------------------------------------------------------
-;	main.c:153: void btn_int() __interrupt(0) //external interrupt 0 ISR
+;	main.c:97: void T_int_01() __interrupt 1 // void [user name]() interrupt [vector num.]
 ;	-----------------------------------------
-;	 function btn_int
+;	 function T_int_01
 ;	-----------------------------------------
-_btn_int:
-	push	bits
+_T_int_01:
 	push	acc
-	push	b
-	push	dpl
-	push	dph
-	push	(0+7)
-	push	(0+6)
-	push	(0+5)
-	push	(0+4)
-	push	(0+3)
-	push	(0+2)
-	push	(0+1)
-	push	(0+0)
 	push	psw
-	mov	psw,#0x00
-;	main.c:156: EA = 0;
-;	assignBit
-	clr	_EA
-;	main.c:157: btn_int_flag = 1;
-	mov	_btn_int_flag,#0x01
-;	main.c:158: delay(1);
-	mov	dptr,#0x0001
-	lcall	_delay
-;	main.c:159: EA = 1; // Interrupt enables
+;	main.c:100: T_int_flag_01 = 1;
+	mov	_T_int_flag_01,#0x01
+;	main.c:102: count_01++;
+	inc	_count_01
+;	main.c:103: if (count_01 > 3)
+	mov	a,_count_01
+	add	a,#0xff - 0x03
+	jnc	00102$
+;	main.c:105: count_01 = 0; //count increment & count initialization have to be placed at the same place.
+	mov	_count_01,#0x00
+00102$:
+;	main.c:107: TH0 = 0xec;
+	mov	_TH0,#0xec
+;	main.c:108: TL0 = 0x78; // Reset of these two register is necessary for periodic interrupt since it is mode 1.
+	mov	_TL0,#0x78
+;	main.c:109: EA = 1;     // Interrupt enables
 ;	assignBit
 	setb	_EA
-;	main.c:160: return;
-;	main.c:161: }
+;	main.c:110: return;
+;	main.c:111: }
 	pop	psw
-	pop	(0+0)
-	pop	(0+1)
-	pop	(0+2)
-	pop	(0+3)
-	pop	(0+4)
-	pop	(0+5)
-	pop	(0+6)
-	pop	(0+7)
-	pop	dph
-	pop	dpl
-	pop	b
 	pop	acc
-	pop	bits
 	reti
+;	eliminated unneeded mov psw,# (no regs used in bank)
+;	eliminated unneeded push/pop dpl
+;	eliminated unneeded push/pop dph
+;	eliminated unneeded push/pop b
 ;------------------------------------------------------------
 ;Allocation info for local variables in function 'byte_write'
 ;------------------------------------------------------------
@@ -766,82 +641,82 @@ _btn_int:
 ;w_addr                    Allocated to registers r7 
 ;i                         Allocated to registers r6 
 ;------------------------------------------------------------
-;	main.c:165: void byte_write(unsigned char w_addr, unsigned char w_data)
+;	main.c:115: void byte_write(unsigned char w_addr, unsigned char w_data)
 ;	-----------------------------------------
 ;	 function byte_write
 ;	-----------------------------------------
 _byte_write:
 	mov	r7,dpl
-;	main.c:169: RST = 1;
+;	main.c:119: RST = 1;
 ;	assignBit
 	setb	_RST
-;	main.c:171: for (i = 0; i < 8; i++)
+;	main.c:121: for (i = 0; i < 8; i++)
 	mov	r6,#0x00
 00109$:
-;	main.c:173: if (w_addr & 0x01)
+;	main.c:123: if (w_addr & 0x01)
 	mov	a,r7
 	jnb	acc.0,00102$
-;	main.c:175: IO = 1;
+;	main.c:125: IO = 1;
 ;	assignBit
 	setb	_IO
 	sjmp	00103$
 00102$:
-;	main.c:179: IO = 0;
+;	main.c:129: IO = 0;
 ;	assignBit
 	clr	_IO
 00103$:
-;	main.c:181: SCLK = 1;
+;	main.c:131: SCLK = 1;
 ;	assignBit
 	setb	_SCLK
-;	main.c:182: SCLK = 0;
+;	main.c:132: SCLK = 0;
 ;	assignBit
 	clr	_SCLK
-;	main.c:183: w_addr >>= 1;
+;	main.c:133: w_addr >>= 1;
 	mov	a,r7
 	clr	c
 	rrc	a
 	mov	r7,a
-;	main.c:171: for (i = 0; i < 8; i++)
+;	main.c:121: for (i = 0; i < 8; i++)
 	inc	r6
 	cjne	r6,#0x08,00142$
 00142$:
 	jc	00109$
-;	main.c:186: for (i = 0; i < 8; i++)
+;	main.c:136: for (i = 0; i < 8; i++)
 	mov	r7,#0x00
 00111$:
-;	main.c:188: if (w_data & 0x01)
+;	main.c:138: if (w_data & 0x01)
 	mov	a,_byte_write_PARM_2
 	jnb	acc.0,00106$
-;	main.c:190: IO = 1;
+;	main.c:140: IO = 1;
 ;	assignBit
 	setb	_IO
 	sjmp	00107$
 00106$:
-;	main.c:194: IO = 0;
+;	main.c:144: IO = 0;
 ;	assignBit
 	clr	_IO
 00107$:
-;	main.c:196: SCLK = 1;
+;	main.c:146: SCLK = 1;
 ;	assignBit
 	setb	_SCLK
-;	main.c:197: SCLK = 0;
+;	main.c:147: SCLK = 0;
 ;	assignBit
 	clr	_SCLK
-;	main.c:198: w_data >>= 1;
+;	main.c:148: w_data >>= 1;
 	mov	a,_byte_write_PARM_2
 	clr	c
 	rrc	a
 	mov	_byte_write_PARM_2,a
-;	main.c:186: for (i = 0; i < 8; i++)
+;	main.c:136: for (i = 0; i < 8; i++)
 	inc	r7
 	cjne	r7,#0x08,00145$
 00145$:
 	jc	00111$
-;	main.c:201: RST = 0;
+;	main.c:151: RST = 0;
 ;	assignBit
 	clr	_RST
-;	main.c:202: return;
-;	main.c:203: }
+;	main.c:152: return;
+;	main.c:153: }
 	ret
 ;------------------------------------------------------------
 ;Allocation info for local variables in function 'byte_read'
@@ -851,372 +726,190 @@ _byte_write:
 ;r_data                    Allocated to registers r4 
 ;tmp                       Allocated to registers r5 
 ;------------------------------------------------------------
-;	main.c:205: unsigned char byte_read(unsigned char r_addr) //read data on RTC.
+;	main.c:155: unsigned char byte_read(unsigned char r_addr) //read data on RTC.
 ;	-----------------------------------------
 ;	 function byte_read
 ;	-----------------------------------------
 _byte_read:
 	mov	r7,dpl
-;	main.c:209: RST = 1; //rst pin high for data access.
+;	main.c:159: RST = 1; //rst pin high for data access.
 ;	assignBit
 	setb	_RST
-;	main.c:211: for (i = 0; i < 7; i++)
+;	main.c:161: for (i = 0; i < 7; i++)
 	mov	r6,#0x00
 00109$:
-;	main.c:213: if (r_addr & 0x01)
+;	main.c:163: if (r_addr & 0x01)
 	mov	a,r7
 	jnb	acc.0,00102$
-;	main.c:215: IO = 1;
+;	main.c:165: IO = 1;
 ;	assignBit
 	setb	_IO
 	sjmp	00103$
 00102$:
-;	main.c:219: IO = 0;
+;	main.c:169: IO = 0;
 ;	assignBit
 	clr	_IO
 00103$:
-;	main.c:221: SCLK = 1;
+;	main.c:171: SCLK = 1;
 ;	assignBit
 	setb	_SCLK
-;	main.c:222: SCLK = 0;
+;	main.c:172: SCLK = 0;
 ;	assignBit
 	clr	_SCLK
-;	main.c:223: r_addr >>= 1; //Right shifting for 1 bit.
+;	main.c:173: r_addr >>= 1; //Right shifting for 1 bit.
 	mov	a,r7
 	clr	c
 	rrc	a
 	mov	r7,a
-;	main.c:211: for (i = 0; i < 7; i++)
+;	main.c:161: for (i = 0; i < 7; i++)
 	inc	r6
 	cjne	r6,#0x07,00148$
 00148$:
 	jc	00109$
-;	main.c:226: if (r_addr & 0x01)
+;	main.c:176: if (r_addr & 0x01)
 	mov	a,r7
 	jnb	acc.0,00106$
-;	main.c:228: IO = 1;
+;	main.c:178: IO = 1;
 ;	assignBit
 	setb	_IO
 	sjmp	00107$
 00106$:
-;	main.c:232: IO = 0;
+;	main.c:182: IO = 0;
 ;	assignBit
 	clr	_IO
 00107$:
-;	main.c:235: SCLK = 1; //
+;	main.c:185: SCLK = 1; //
 ;	assignBit
 	setb	_SCLK
-;	main.c:237: r_data = 0x00;
+;	main.c:187: r_data = 0x00;
 	mov	r7,#0x00
-;	main.c:239: for (i = 0; i < 8; i++)
+;	main.c:189: for (i = 0; i < 8; i++)
 	mov	r6,#0x00
 00111$:
-;	main.c:241: SCLK = 1;
+;	main.c:191: SCLK = 1;
 ;	assignBit
 	setb	_SCLK
-;	main.c:242: tmp = IO;
+;	main.c:192: tmp = IO;
 	mov	c,_IO
 	clr	a
 	rlc	a
-;	main.c:243: tmp <<= 7;
+;	main.c:193: tmp <<= 7;
 	rr	a
 	anl	a,#0x80
 	mov	r5,a
-;	main.c:244: r_data >>= 1;
+;	main.c:194: r_data >>= 1;
 	mov	a,r7
 	clr	c
 	rrc	a
-;	main.c:245: r_data |= tmp;
+;	main.c:195: r_data |= tmp;
 	orl	a,r5
 	mov	r7,a
-;	main.c:246: SCLK = 0;
+;	main.c:196: SCLK = 0;
 ;	assignBit
 	clr	_SCLK
-;	main.c:239: for (i = 0; i < 8; i++)
+;	main.c:189: for (i = 0; i < 8; i++)
 	inc	r6
 	cjne	r6,#0x08,00151$
 00151$:
 	jc	00111$
-;	main.c:249: RST = 0;
+;	main.c:199: RST = 0;
 ;	assignBit
 	clr	_RST
-;	main.c:251: return r_data;
+;	main.c:201: return r_data;
 	mov	dpl,r7
-;	main.c:252: }
+;	main.c:202: }
 	ret
 ;------------------------------------------------------------
-;Allocation info for local variables in function 'year_set'
+;Allocation info for local variables in function 'display'
 ;------------------------------------------------------------
-;	main.c:254: void year_set()
+;	main.c:204: void display()
 ;	-----------------------------------------
-;	 function year_set
+;	 function display
 ;	-----------------------------------------
-_year_set:
-;	main.c:256: year_bcd++;
-	inc	_year_bcd
-;	main.c:257: if (year_bcd == 0x0a)
-	mov	a,#0x0a
-	cjne	a,_year_bcd,00128$
-;	main.c:259: year_bcd = 0x10;
-	mov	_year_bcd,#0x10
-	ljmp	00129$
-00128$:
-;	main.c:261: else if (year_bcd == 0x1a)
-	mov	a,#0x1a
-	cjne	a,_year_bcd,00125$
-;	main.c:263: year_bcd = 0x20;
-	mov	_year_bcd,#0x20
-	ljmp	00129$
-00125$:
-;	main.c:265: else if (year_bcd == 0x2a)
-	mov	a,#0x2a
-	cjne	a,_year_bcd,00122$
-;	main.c:267: year_bcd = 0x30;
-	mov	_year_bcd,#0x30
-	sjmp	00129$
-00122$:
-;	main.c:269: else if (year_bcd == 0x3a)
-	mov	a,#0x3a
-	cjne	a,_year_bcd,00119$
-;	main.c:271: year_bcd = 0x40;
-	mov	_year_bcd,#0x40
-	sjmp	00129$
-00119$:
-;	main.c:273: else if (year_bcd == 0x4a)
-	mov	a,#0x4a
-	cjne	a,_year_bcd,00116$
-;	main.c:275: year_bcd = 0x50;
-	mov	_year_bcd,#0x50
-	sjmp	00129$
-00116$:
-;	main.c:277: else if (year_bcd == 0x5a)
-	mov	a,#0x5a
-	cjne	a,_year_bcd,00113$
-;	main.c:279: year_bcd = 0x60;
-	mov	_year_bcd,#0x60
-	sjmp	00129$
-00113$:
-;	main.c:281: else if (year_bcd == 0x6a)
-	mov	a,#0x6a
-	cjne	a,_year_bcd,00110$
-;	main.c:283: year_bcd = 0x70;
-	mov	_year_bcd,#0x70
-	sjmp	00129$
+_display:
+;	main.c:207: if (count_01 == 0)
+	mov	a,_count_01
+	jnz	00110$
+;	main.c:209: hr = byte_read(0x85);
+	mov	dpl,#0x85
+	lcall	_byte_read
+;	main.c:210: a = ((hr >> 4) & 0x01);
+	mov	a,dpl
+	mov	_hr,a
+	swap	a
+	anl	a,#0x01
+;	main.c:211: P0 = 0x0e;
+;	main.c:212: P1 = num[a];
+	mov	_a,a
+	mov	_P0,#0x0e
+	add	a,#_num
+	mov	r1,a
+	mov	_P1,@r1
+	ret
 00110$:
-;	main.c:285: else if (year_bcd == 0x7a)
-	mov	a,#0x7a
-	cjne	a,_year_bcd,00107$
-;	main.c:287: year_bcd = 0x80;
-	mov	_year_bcd,#0x80
-	sjmp	00129$
+;	main.c:215: else if (count_01 == 1)
+	mov	a,#0x01
+	cjne	a,_count_01,00107$
+;	main.c:217: hr = byte_read(0x85);
+	mov	dpl,#0x85
+	lcall	_byte_read
+;	main.c:218: b = (hr & 0x0f);
+	mov	a,dpl
+	mov	_hr,a
+	anl	a,#0x0f
+;	main.c:219: P0 = 0x0d;
+;	main.c:220: P1 = num[b];
+	mov	_b,a
+	mov	_P0,#0x0d
+	add	a,#_num
+	mov	r1,a
+	mov	_P1,@r1
+	ret
 00107$:
-;	main.c:289: else if (year_bcd == 0x8a)
-	mov	a,#0x8a
-	cjne	a,_year_bcd,00104$
-;	main.c:291: year_bcd = 0x90;
-	mov	_year_bcd,#0x90
-	sjmp	00129$
+;	main.c:223: else if (count_01 == 2)
+	mov	a,#0x02
+	cjne	a,_count_01,00104$
+;	main.c:225: min = byte_read(0x83);
+	mov	dpl,#0x83
+	lcall	_byte_read
+;	main.c:226: c = ((min>>4) & 0x07);
+	mov	a,dpl
+	mov	_min,a
+	swap	a
+	anl	a,#0x0f
+	mov	r7,a
+	mov	a,#0x07
+	anl	a,r7
+;	main.c:227: P0 = 0x0b;
+;	main.c:228: P1 = num[c];
+	mov	_c,a
+	mov	_P0,#0x0b
+	add	a,#_num
+	mov	r1,a
+	mov	_P1,@r1
+	ret
 00104$:
-;	main.c:293: else if (year_bcd == 0x9a)
-	mov	a,#0x9a
-	cjne	a,_year_bcd,00129$
-;	main.c:295: year_bcd = 0x00;
-	mov	_year_bcd,#0x00
-00129$:
-;	main.c:297: byte_write(0x8c, year_bcd);
-	mov	_byte_write_PARM_2,_year_bcd
-	mov	dpl,#0x8c
-;	main.c:298: }
-	ljmp	_byte_write
-;------------------------------------------------------------
-;Allocation info for local variables in function 'mnth_set'
-;------------------------------------------------------------
-;	main.c:300: void mnth_set()
-;	-----------------------------------------
-;	 function mnth_set
-;	-----------------------------------------
-_mnth_set:
-;	main.c:302: mnth_bcd++;
-	inc	_mnth_bcd
-;	main.c:303: if (mnth_bcd == 0x0a)
-	mov	a,#0x0a
-	cjne	a,_mnth_bcd,00104$
-;	main.c:305: mnth_bcd = 0x10;
-	mov	_mnth_bcd,#0x10
-	sjmp	00105$
-00104$:
-;	main.c:307: else if (mnth_bcd == 0x13)
-	mov	a,#0x13
-	cjne	a,_mnth_bcd,00105$
-;	main.c:309: mnth_bcd = 0x01;
-	mov	_mnth_bcd,#0x01
-00105$:
-;	main.c:311: byte_write(0x88, mnth_bcd);
-	mov	_byte_write_PARM_2,_mnth_bcd
-	mov	dpl,#0x88
-;	main.c:312: }
-	ljmp	_byte_write
-;------------------------------------------------------------
-;Allocation info for local variables in function 'date_set'
-;------------------------------------------------------------
-;	main.c:314: void date_set() //자동으로 mnth마다 설정이 되나?
-;	-----------------------------------------
-;	 function date_set
-;	-----------------------------------------
-_date_set:
-;	main.c:316: date_bcd++;
-	inc	_date_bcd
-;	main.c:317: if (date_bcd == 0x0a)
-	mov	a,#0x0a
-	cjne	a,_date_bcd,00110$
-;	main.c:319: date_bcd = 0x10;
-	mov	_date_bcd,#0x10
-	sjmp	00111$
-00110$:
-;	main.c:321: else if (date_bcd == 0x1a)
-	mov	a,#0x1a
-	cjne	a,_date_bcd,00107$
-;	main.c:323: date_bcd = 0x20;
-	mov	_date_bcd,#0x20
-	sjmp	00111$
-00107$:
-;	main.c:325: else if (date_bcd == 0x2a)
-	mov	a,#0x2a
-	cjne	a,_date_bcd,00104$
-;	main.c:327: date_bcd = 0x30;
-	mov	_date_bcd,#0x30
-	sjmp	00111$
-00104$:
-;	main.c:329: else if (date_bcd == 0x32)
-	mov	a,#0x32
-	cjne	a,_date_bcd,00111$
-;	main.c:331: date_bcd = 0x01;
-	mov	_date_bcd,#0x01
+;	main.c:231: else if (count_01 == 3)
+	mov	a,#0x03
+	cjne	a,_count_01,00111$
+;	main.c:233: min = byte_read(0x83);
+	mov	dpl,#0x83
+	lcall	_byte_read
+;	main.c:234: d = (min & 0x0f);
+	mov	a,dpl
+	mov	_min,a
+	anl	a,#0x0f
+;	main.c:235: P0 = 0x07;
+;	main.c:236: P1 = num[d];
+	mov	_d,a
+	mov	_P0,#0x07
+	add	a,#_num
+	mov	r1,a
+	mov	_P1,@r1
 00111$:
-;	main.c:334: byte_write(0x86, date_bcd);
-	mov	_byte_write_PARM_2,_date_bcd
-	mov	dpl,#0x86
-;	main.c:335: }
-	ljmp	_byte_write
-;------------------------------------------------------------
-;Allocation info for local variables in function 'day_set'
-;------------------------------------------------------------
-;	main.c:337: void day_set()
-;	-----------------------------------------
-;	 function day_set
-;	-----------------------------------------
-_day_set:
-;	main.c:339: day_bcd++;
-	inc	_day_bcd
-;	main.c:340: if (day_bcd == 0x08)
-	mov	a,#0x08
-	cjne	a,_day_bcd,00102$
-;	main.c:342: day_bcd = 0x01;
-	mov	_day_bcd,#0x01
-00102$:
-;	main.c:344: byte_write(0x8a, day_bcd);
-	mov	_byte_write_PARM_2,_day_bcd
-	mov	dpl,#0x8a
-;	main.c:345: }
-	ljmp	_byte_write
-;------------------------------------------------------------
-;Allocation info for local variables in function 'hr_set'
-;------------------------------------------------------------
-;	main.c:347: void hr_set()
-;	-----------------------------------------
-;	 function hr_set
-;	-----------------------------------------
-_hr_set:
-;	main.c:349: hr_bcd++;
-	inc	_hr_bcd
-;	main.c:350: if (hr_bcd == 0x8a)
-	mov	a,#0x8a
-	cjne	a,_hr_bcd,00110$
-;	main.c:352: hr_bcd = 0x80 | 0x10;
-	mov	_hr_bcd,#0x90
-	sjmp	00111$
-00110$:
-;	main.c:354: else if (hr_bcd == 0x93)
-	mov	a,#0x93
-	cjne	a,_hr_bcd,00107$
-;	main.c:356: hr_bcd = (0x80 | 0x01) | 0x20;
-	mov	_hr_bcd,#0xa1
-	sjmp	00111$
-00107$:
-;	main.c:358: else if (hr_bcd == 0xaa)
-	mov	a,#0xaa
-	cjne	a,_hr_bcd,00104$
-;	main.c:360: hr_bcd = 0xa0 | 0x10;
-	mov	_hr_bcd,#0xb0
-	sjmp	00111$
-00104$:
-;	main.c:362: else if (hr_bcd == 0xb3)
-	mov	a,#0xb3
-	cjne	a,_hr_bcd,00111$
-;	main.c:364: hr_bcd = 0x80;
-	mov	_hr_bcd,#0x80
-00111$:
-;	main.c:366: byte_write(0x84, hr_bcd);
-	mov	_byte_write_PARM_2,_hr_bcd
-	mov	dpl,#0x84
-;	main.c:367: }
-	ljmp	_byte_write
-;------------------------------------------------------------
-;Allocation info for local variables in function 'min_set'
-;------------------------------------------------------------
-;	main.c:369: void min_set()
-;	-----------------------------------------
-;	 function min_set
-;	-----------------------------------------
-_min_set:
-;	main.c:371: min_bcd++;
-	inc	_min_bcd
-;	main.c:372: if (min_bcd == 0x0a)
-	mov	a,#0x0a
-	cjne	a,_min_bcd,00116$
-;	main.c:374: min_bcd = 0x10;
-	mov	_min_bcd,#0x10
-	sjmp	00117$
-00116$:
-;	main.c:376: else if (min_bcd == 0x1a)
-	mov	a,#0x1a
-	cjne	a,_min_bcd,00113$
-;	main.c:378: min_bcd = 0x20;
-	mov	_min_bcd,#0x20
-	sjmp	00117$
-00113$:
-;	main.c:380: else if (min_bcd == 0x2a)
-	mov	a,#0x2a
-	cjne	a,_min_bcd,00110$
-;	main.c:382: min_bcd = 0x30;
-	mov	_min_bcd,#0x30
-	sjmp	00117$
-00110$:
-;	main.c:384: else if (min_bcd == 0x3a)
-	mov	a,#0x3a
-	cjne	a,_min_bcd,00107$
-;	main.c:386: min_bcd = 0x40;
-	mov	_min_bcd,#0x40
-	sjmp	00117$
-00107$:
-;	main.c:388: else if (min_bcd == 0x4a)
-	mov	a,#0x4a
-	cjne	a,_min_bcd,00104$
-;	main.c:390: min_bcd = 0x50;
-	mov	_min_bcd,#0x50
-	sjmp	00117$
-00104$:
-;	main.c:392: else if (min_bcd == 0x5a)
-	mov	a,#0x5a
-	cjne	a,_min_bcd,00117$
-;	main.c:394: min_bcd = 0x00;
-	mov	_min_bcd,#0x00
-00117$:
-;	main.c:396: byte_write(0x82, min_bcd);
-	mov	_byte_write_PARM_2,_min_bcd
-	mov	dpl,#0x82
-;	main.c:397: }
-	ljmp	_byte_write
+;	main.c:239: return;
+;	main.c:240: }
+	ret
 	.area CSEG    (CODE)
 	.area CONST   (CODE)
 	.area XINIT   (CODE)
